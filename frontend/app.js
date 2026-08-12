@@ -730,23 +730,11 @@ function initLyricBg() {
     };
   }
 
-  function mirrorOf(p) {
-    return { ...p, side: "right", x: W - p.x - p.size };
-  }
-
-  function respawnPair(k) {
-    const left = spawn(false, "left");
-    parts[2 * k] = left;
-    parts[2 * k + 1] = mirrorOf(left);
-  }
-
   function rebuild() {
     parts.length = 0;
-    const pairs = sideW < 180 ? 4 : sideW < 280 ? 6 : 8;
-    for (let i = 0; i < pairs; i++) {
-      parts.push(spawn(true, "left"));
-      parts.push(mirrorOf(parts[parts.length - 1]));
-    }
+    const perSide = sideW < 180 ? 4 : sideW < 280 ? 6 : 8;
+    for (let i = 0; i < perSide; i++) parts.push(spawn(true, "left"));
+    for (let i = 0; i < perSide; i++) parts.push(spawn(true, "right"));
   }
 
   function tick() {
@@ -762,7 +750,7 @@ function initLyricBg() {
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
       ctx.fillStyle = "#2bd96a";
       ctx.fillText(p.glyph, x, p.y);
-      if (p.y < -30) respawnPair(Math.floor(i / 2));
+      if (p.y < -30) parts[i] = spawn(false, p.side);
     }
     ctx.globalAlpha = 1;
     requestAnimationFrame(tick);
