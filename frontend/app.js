@@ -721,7 +721,7 @@ function showSideLyric(side) {
   el.innerHTML = `<span class="l-text">${chars}</span><span class="l-song">《${item.song}》</span>`;
   // 垂直位置与另一侧错开，避免两条歌词重叠
   let top = lyricLastTop + (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 18);
-  top = Math.min(68, Math.max(10, top));
+  top = Math.min(60, Math.max(16, top));
   lyricLastTop = top;
   el.style.top = `${top}%`;
   const margin = 20;
