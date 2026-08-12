@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MixLab · 音乐融合工坊</title>
-  <link rel="stylesheet" href="styles.css?v=20260813b" />
+  <link rel="stylesheet" href="styles.css?v=20260813c" />
 </head>
 <body>
   <canvas id="lyric-bg" aria-hidden="true"></canvas>
@@ -76,11 +76,15 @@
       <div class="card timeline-card">
         <div class="card-head">
           <h2>拼接时间线</h2>
-          <label class="auto-check">
-            <input type="checkbox" id="auto-cut" checked />
-            自动选择最佳切点
-          </label>
+          <div class="tl-actions">
+            <button class="btn-ghost" id="auto-structure" title="自动找到 A 的前奏结束点和 B 的副歌开始点">🎯 智能识别切点</button>
+            <label class="auto-check">
+              <input type="checkbox" id="auto-cut" checked />
+              自动选择最佳切点
+            </label>
+          </div>
         </div>
+        <p class="tl-hint" id="structure-hint" hidden></p>
         <div class="timeline-row">
           <div class="tl-label">A 接入点</div>
           <div class="tl-wrap">
@@ -199,6 +203,16 @@
             <div class="mode-name">均衡混合</div>
             <div class="mode-desc">两首歌等量混合，各占一半</div>
           </button>
+          <button class="mode-card" data-mode="harmony">
+            <div class="mode-emoji">🎤🎵</div>
+            <div class="mode-name">和声叠加</div>
+            <div class="mode-desc">A 主唱 + B 人声自动转成和声垫底，伴奏用 B</div>
+          </button>
+          <button class="mode-card" data-mode="rhythm_swap">
+            <div class="mode-emoji">🥁⇄</div>
+            <div class="mode-name">节奏互换</div>
+            <div class="mode-desc">A 的旋律和唱 + B 的鼓和贝斯，节奏换成 B 的</div>
+          </button>
         </div>
       </div>
 
@@ -224,6 +238,10 @@
         <div class="switch-row">
           <span>节拍 / 调性自动对齐</span>
           <label class="switch"><input type="checkbox" id="fusion-align" checked /><span></span></label>
+        </div>
+        <div class="switch-row">
+          <span>音色统一（混响 / 空间匹配）</span>
+          <label class="switch"><input type="checkbox" id="match-space" checked /><span></span></label>
         </div>
         <div class="switch-row">
           <span>导出格式</span>
@@ -293,6 +311,6 @@
   </main>
 
   <footer class="footer">MixLab · 本地 AI 音乐工作台 · 所有处理都在你的电脑上完成</footer>
-  <script src="app.js?v=20260813b"></script>
+  <script src="app.js?v=20260813c"></script>
 </body>
 </html>

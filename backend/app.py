@@ -145,6 +145,19 @@ def join(req: JoinRequest):
     return {"task_id": _new_task(fn)}
 
 
+class StructureRequest(BaseModel):
+    track_id: str
+
+
+@app.post("/api/structure")
+def structure(req: StructureRequest):
+    track = _track_or_404(req.track_id)
+    if "structure" not in track:
+        audio = audio_engine.load_audio(track["path"])
+        track["structure"] = audio_engine.detect_structure(audio)
+    return {"track_id": req.track_id, "structure": track["structure"]}
+
+
 class FusionRequest(BaseModel):
     a_id: str
     b_id: str
@@ -153,6 +166,7 @@ class FusionRequest(BaseModel):
     keep_a_bed: float = 0.25
     use_b_drums: bool = False
     align: bool = True
+    match_space: bool = True
     output_format: str = "mp3"
 
 
@@ -170,6 +184,7 @@ def fusion(req: FusionRequest):
             keep_a_bed=req.keep_a_bed,
             use_b_drums=req.use_b_drums,
             align=req.align,
+            match_space_enabled=req.match_space,
             device="cuda",
             progress_cb=cb,
         )

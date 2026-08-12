@@ -8,6 +8,8 @@ const state = {
   cutA: 75,
   cutB: 0,
   autoCut: true,
+  structureA: null,
+  structureB: null,
   running: {},
   format: { join: "mp3", fusion: "mp3" },
 };
@@ -87,11 +89,19 @@ function redrawAllWaves() {
 
 /* ================= 时间线 ================= */
 function currentCutA() {
-  return state.autoCut ? 75 : state.cutA;
+  if (!state.autoCut) return state.cutA;
+  if (state.structureA && state.tracks.a?.meta.duration) {
+    return (state.structureA.intro_end / state.tracks.a.meta.duration) * 100;
+  }
+  return 75;
 }
 
 function currentCutB() {
-  return state.autoCut ? 0 : state.cutB;
+  if (!state.autoCut) return state.cutB;
+  if (state.structureB && state.tracks.b?.meta.duration) {
+    return (state.structureB.chorus_start / state.tracks.b.meta.duration) * 100;
+  }
+  return 0;
 }
 
 function drawTimeline(canvasId, markerId, timeId, peaks, pct, editable, color, duration) {
@@ -187,8 +197,11 @@ async function uploadTrack(slot, file) {
     }
     const data = await r.json();
     state.tracks[slot] = data;
+    if (slot === "a") state.structureA = null;
+    else state.structureB = null;
     renderTrack(slot, data);
     updateRunBtns();
+    if (state.tracks.a && state.tracks.b) autoDetectStructure(true);
   } catch (err) {
     alert(`上传失败：${err.message}`);
   } finally {
@@ -214,6 +227,10 @@ function renderTrack(slot, data) {
 
 function clearTrack(slot) {
   state.tracks[slot] = null;
+  if (slot === "a") state.structureA = null;
+  else state.structureB = null;
+  const hint = $("structure-hint");
+  if (hint) hint.hidden = true;
   TRACK_UI[slot].forEach((ui) => {
     $(ui.title).textContent = slot === "a" ? "歌曲 A" : "歌曲 B";
     $(ui.drop).classList.remove("hidden");
@@ -373,13 +390,54 @@ function collectJoinPayload() {
   return {
     a_id: state.tracks.a.id,
     b_id: state.tracks.b.id,
-    cut_a: state.autoCut ? null : (state.cutA / 100) * state.tracks.a.meta.duration,
-    cut_b: state.autoCut ? null : (state.cutB / 100) * state.tracks.b.meta.duration,
+    cut_a: state.autoCut ? (state.structureA?.intro_end ?? null) : (state.cutA / 100) * state.tracks.a.meta.duration,
+    cut_b: state.autoCut ? (state.structureB?.chorus_start ?? null) : (state.cutB / 100) * state.tracks.b.meta.duration,
     crossfade_sec: parseFloat($("crossfade").value),
     align_bpm: $("align-bpm").checked,
     align_pitch: $("align-pitch").checked,
     output_format: state.format.join,
   };
+}
+
+async function autoDetectStructure(auto = false) {
+  if (!state.tracks.a || !state.tracks.b) return;
+  if (auto && state.structureA && state.structureB) return;
+  setBusy(true);
+  const hint = $("structure-hint");
+  try {
+    if (hint) {
+      hint.hidden = false;
+      hint.textContent = "正在智能识别前奏 / 副歌…";
+    }
+    const [sa, sb] = await Promise.all([
+      fetch("/api/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track_id: state.tracks.a.id }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("A 结构识别失败");
+        return r.json();
+      }),
+      fetch("/api/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track_id: state.tracks.b.id }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("B 结构识别失败");
+        return r.json();
+      }),
+    ]);
+    state.structureA = sa.structure;
+    state.structureB = sb.structure;
+    if (hint) {
+      hint.textContent = `已识别：A 前奏结束 ${fmtTime(sa.structure.intro_end)} · B 副歌开始 ${fmtTime(sb.structure.chorus_start)}，切点已自动定位`;
+    }
+    updateTimelineUI();
+  } catch (err) {
+    if (hint) hint.textContent = `识别失败：${err.message}`;
+  } finally {
+    setBusy(false);
+  }
 }
 
 async function runJoin() {
@@ -408,6 +466,7 @@ function collectFusionPayload() {
     keep_a_bed: parseFloat($("keep-bed").value),
     use_b_drums: $("use-b-drums").checked,
     align: $("fusion-align").checked,
+    match_space: $("match-space").checked,
     output_format: state.format.fusion,
   };
 }
@@ -422,8 +481,10 @@ async function runFusion() {
 
 function updateFusionUI() {
   const mode = state.fusionMode;
-  $("keep-bed-row").style.display = mode === "vocal_swap" ? "" : "none";
+  $("keep-bed-row").style.display = mode === "vocal_swap" || mode === "harmony" || mode === "rhythm_swap" ? "" : "none";
   $("drums-row").hidden = mode !== "a_main";
+  const keepLabel = $("keep-bed-row").querySelector("label");
+  keepLabel.textContent = mode === "rhythm_swap" ? "保留 A 原节奏比例（更稳一点）" : "保留 A 的伴奏底（更有 A 的味道）";
   $("b-vol-label").textContent = mode === "a_main" ? "B 的融入音量（建议 20-40%）" : "B 的音量";
 }
 
@@ -532,6 +593,7 @@ function init() {
   $("join-btn").addEventListener("click", runJoin);
   $("fusion-btn").addEventListener("click", runFusion);
   $("sep-btn").addEventListener("click", runSeparate);
+  $("auto-structure").addEventListener("click", () => autoDetectStructure());
 
   window.addEventListener("resize", redrawAllWaves);
   window.addEventListener("scroll", () => {
@@ -750,7 +812,7 @@ function initLyricBg() {
       speed: 0.22 + Math.random() * 0.38,
       phase: Math.random() * Math.PI * 2,
       rot: (Math.random() - 0.5) * 0.45,
-      alpha: 0.38 + Math.random() * 0.24,
+      alpha: 0.20 + Math.random() * 0.18,
       glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
     };
   }
@@ -784,6 +846,8 @@ function initLyricBg() {
       ctx.textBaseline = "middle";
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
       ctx.fillStyle = "#2bd96a";
+      ctx.shadowColor = "rgba(43, 217, 106, 0.9)";
+      ctx.shadowBlur = 10 + p.size * 0.35;
       ctx.fillText(p.glyph, 0, 0);
       ctx.restore();
     }

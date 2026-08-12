@@ -130,6 +130,62 @@ def analyze(path: str) -> dict:
     }
 
 
+def detect_structure(audio: np.ndarray) -> dict:
+    """Estimate song structure: intro end and chorus start/end (seconds).
+
+    Uses energy envelopes for the intro and beat-synchronous energy for the
+    chorus (usually the first sustained high-energy section after the intro).
+    """
+    import librosa
+
+    y = _mono(audio)
+    dur = y.size / SR
+    if dur <= 1.0:
+        return {"intro_end": 0.0, "chorus_start": 0.0, "chorus_end": round(min(dur, 8.0), 2), "duration": round(dur, 2)}
+    y = y[: int(min(dur, 300.0) * SR)]
+    hop = 2048
+    rms = librosa.feature.rms(y=y, hop_length=hop)[0]
+    n = rms.size
+    win = max(1, int(round(0.5 * SR / hop)))
+    smooth = np.convolve(rms, np.ones(win) / win, mode="same")
+    norm = smooth / (smooth.max() + 1e-12)
+    times = np.arange(n) * hop / SR
+
+    # 前奏结束：能量第一次明显抬升的位置
+    idx = np.flatnonzero(norm > 0.25)
+    intro_end = 0.0
+    if idx.size and idx[0] > int(0.03 * n):
+        intro_end = float(times[idx[0]])
+    intro_end = float(np.clip(intro_end, 2.0, min(30.0, dur * 0.25)))
+
+    # 副歌开始：前奏之后第一个持续高能小节
+    chorus_start = 0.0
+    try:
+        _, beats = librosa.beat.beat_track(y=y, sr=SR, hop_length=hop, trim=False)
+        beats = np.asarray(beats)
+        if beats.size > 4:
+            bt = librosa.frames_to_time(beats, sr=SR, hop_length=hop)
+            bv = np.array([norm[min(n - 1, int(round(b * SR / hop)))] for b in beats])
+            for i in range(len(bt) - 8):
+                if bt[i] > intro_end and bv[i : i + 8].mean() > 0.62:
+                    chorus_start = float(bt[i])
+                    break
+    except Exception:
+        pass
+    if chorus_start == 0.0:
+        start_frame = max(0, int(intro_end * SR / hop))
+        if start_frame < n:
+            chorus_start = float(times[start_frame + int(np.argmax(norm[start_frame:]))])
+    chorus_start = float(np.clip(chorus_start, 0.0, max(0.0, dur - 1.0)))
+    chorus_end = float(np.clip(chorus_start + 16.0, chorus_start, max(chorus_start + 1.0, dur - 0.5)))
+    return {
+        "intro_end": round(intro_end, 2),
+        "chorus_start": round(chorus_start, 2),
+        "chorus_end": round(chorus_end, 2),
+        "duration": round(dur, 2),
+    }
+
+
 def _key_pc(key: str) -> int:
     return KEY_NAMES.index(key.split()[0])
 
@@ -186,6 +242,122 @@ def _match_loudness(track: np.ndarray, target_rms: float, lo: float = 0.2, hi: f
     rms = float(np.sqrt(np.mean(track**2)) + 1e-12)
     gain = float(np.clip(target_rms / rms, lo, hi))
     return track * gain
+
+
+_SPACE_BANDS = [(20, 250), (250, 4000), (4000, 16000)]
+
+
+def _band_filter(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    from scipy.signal import butter, sosfiltfilt
+
+    nyq = SR / 2.0
+    lo = max(1.0, lo)
+    hi = min(hi, nyq - 1.0)
+    if hi <= lo:
+        return x.copy()
+    sos = butter(4, [lo / nyq, hi / nyq], btype="band", output="sos")
+    return sosfiltfilt(sos, x)
+
+
+def _band_energy(x: np.ndarray) -> list:
+    return [float(np.sqrt(np.mean(_band_filter(x, lo, hi) ** 2) + 1e-12)) for lo, hi in _SPACE_BANDS]
+
+
+def estimate_space(audio: np.ndarray) -> dict:
+    """Rough timbre/space profile: brightness, wetness and stereo width."""
+    import librosa
+
+    y = _mono(audio)
+    spec = np.abs(librosa.stft(y, n_fft=2048, hop_length=512))
+    freqs = librosa.fft_frequencies(sr=SR, n_fft=2048)
+    brightness = float(np.average(freqs, weights=spec.sum(axis=1) + 1e-9)) / (SR / 2.0)
+
+    env = np.convolve(np.abs(y), np.ones(2048) / 2048.0, mode="same")
+    onsets = librosa.onset.onset_detect(y=y, sr=SR, hop_length=512, units="samples")
+    ratios = []
+    for o in onsets[:80]:
+        o = int(o)
+        if o + SR > y.size:
+            continue
+        seg = env[o : o + SR]
+        early = seg[: int(0.15 * SR)].mean() + 1e-9
+        late = seg[int(0.45 * SR) :].mean() + 1e-9
+        ratios.append(late / early)
+    wet = float(np.clip(np.median(ratios), 0.0, 1.0)) if ratios else 0.3
+
+    width = 0.3
+    if audio.shape[0] >= 2:
+        m = (audio[0] + audio[1]) * 0.5
+        s = (audio[0] - audio[1]) * 0.5
+        width = float(
+            np.clip(
+                np.sqrt(np.mean(s**2) + 1e-12) / (np.sqrt(np.mean(m**2) + 1e-12) + 1e-12) / 0.8,
+                0.0,
+                1.0,
+            )
+        )
+    return {"brightness": brightness, "wet": wet, "width": width}
+
+
+def _add_reverb(audio: np.ndarray, t60: float = 1.2, mix: float = 0.25) -> np.ndarray:
+    """Add a synthetic exponentially-decaying convolution reverb."""
+    from scipy.signal import oaconvolve
+
+    rng = np.random.default_rng(20260813)
+    ir_len = int(min(t60, 3.0) * SR)
+    t = np.arange(ir_len) / SR
+    decay = np.exp(-3.0 * t / t60)
+    ir_l = rng.standard_normal(ir_len) * decay
+    ir_r = rng.standard_normal(ir_len) * decay
+    ir_l = _band_filter(ir_l, 20, 9000)
+    ir_r = _band_filter(ir_r, 20, 9000)
+    wet_l = oaconvolve(audio[0], ir_l, mode="full")[: audio.shape[1]]
+    wet_r = oaconvolve(audio[1], ir_r, mode="full")[: audio.shape[1]]
+    wet = np.stack([wet_l, wet_r])
+    wet = _match_loudness(wet, float(np.sqrt(np.mean(audio**2)) + 1e-12))
+    return audio * (1.0 - mix) + wet * mix
+
+
+def match_space(audio: np.ndarray, ref: np.ndarray, amount: float = 1.0) -> np.ndarray:
+    """Push ``audio``'s tone/space toward ``ref``: band EQ + reverb + width."""
+    if amount <= 0.01 or audio.shape[1] < SR:
+        return audio
+    target_rms = float(np.sqrt(np.mean(audio**2)) + 1e-12)
+    a_prof = estimate_space(audio)
+    r_prof = estimate_space(ref)
+
+    # 1) 三段频段增益对齐（低频 / 中频 / 高频）
+    a_bands = _band_energy(_mono(audio))
+    r_bands = _band_energy(_mono(ref))
+    gains = [
+        float(np.clip((r_bands[i] + 1e-9) / (a_bands[i] + 1e-9), 0.5, 2.0) ** (0.35 * amount))
+        for i in range(3)
+    ]
+    out = np.stack(
+        [
+            _band_filter(audio[ch], *_SPACE_BANDS[0]) * gains[0]
+            + _band_filter(audio[ch], *_SPACE_BANDS[1]) * gains[1]
+            + _band_filter(audio[ch], *_SPACE_BANDS[2]) * gains[2]
+            for ch in range(audio.shape[0])
+        ]
+    )
+
+    # 2) 参考曲更“湿”时补混响
+    wet_gap = r_prof["wet"] - a_prof["wet"]
+    if wet_gap > 0.05:
+        t60 = 0.5 + 1.5 * float(np.clip(wet_gap, 0.0, 1.0))
+        mix = float(np.clip(0.45 * wet_gap * amount, 0.05, 0.35))
+        out = _add_reverb(out, t60=t60, mix=mix)
+
+    # 3) 参考曲更宽时稍微拉宽立体声
+    width_gap = r_prof["width"] - a_prof["width"]
+    if width_gap > 0.03 and out.shape[0] >= 2:
+        m = (out[0] + out[1]) * 0.5
+        s = (out[0] - out[1]) * 0.5
+        boost = 1.0 + float(np.clip(width_gap * 0.8 * amount, 0.0, 0.5))
+        out = np.stack([m + s * boost, m - s * boost])
+    out = np.ascontiguousarray(out)
+    return _match_loudness(out, target_rms)
 
 
 def seamless_join(
@@ -293,6 +465,7 @@ def smart_fusion(
     keep_a_bed: float = 0.25,
     use_b_drums: bool = False,
     align: bool = True,
+    match_space_enabled: bool = True,
     device: str = "cuda",
     progress_cb: Optional[Callable] = None,
 ) -> np.ndarray:
@@ -327,6 +500,50 @@ def smart_fusion(
                 bed = bed + src
         out = vocals_a + acc_b * float(b_volume) + bed * float(keep_a_bed)
 
+    elif mode == "harmony":
+        cb("separate_a", 8, "正在分离歌曲 A（主唱 + 伴奏）")
+        stems_a = _separate(path_a, device)
+        cb("separate_b", 42, "正在分离歌曲 B（提取和声人声）")
+        stems_b = _separate(path_b, device)
+        cb("mix", 76, "正在叠加和声：A 主唱 + B 和声 + B 伴奏")
+
+        vocals_a = stems_a["vocals"]
+        vocals_b = stems_b["vocals"]
+        acc_b = np.zeros_like(b)
+        for name, src in stems_b.items():
+            if name != "vocals":
+                acc_b = acc_b + src
+        if align:
+            vocals_b = align_to(vocals_b, bpm_b, bpm_a, key_b, key_a)
+            acc_b = align_to(acc_b, bpm_b, bpm_a, key_b, key_a)
+        vocals_b = _fit_length(vocals_b, a.shape[1])
+        acc_b = _fit_length(acc_b, a.shape[1])
+        # 依据主调自动选和声音程：大调叠大三度，小调叠小三度
+        steps = 4 if key_a.endswith("major") else 3
+        harmony = pitch_shift(vocals_b, steps)
+        bed_a = np.zeros_like(a)
+        for name, src in stems_a.items():
+            if name != "vocals":
+                bed_a = bed_a + src
+        out = vocals_a + harmony * (0.32 * float(b_volume)) + acc_b * (0.85 * float(b_volume)) + bed_a * float(keep_a_bed)
+
+    elif mode == "rhythm_swap":
+        cb("separate_a", 8, "正在分离歌曲 A（保留旋律）")
+        stems_a = _separate(path_a, device)
+        cb("separate_b", 42, "正在分离歌曲 B（提取鼓和贝斯）")
+        stems_b = _separate(path_b, device)
+        cb("mix", 76, "节奏互换：A 的旋律 + B 的鼓和贝斯")
+
+        melody_a = np.zeros_like(a)
+        for name in ("vocals", "guitar", "piano", "other"):
+            melody_a = melody_a + stems_a.get(name, np.zeros_like(a))
+        rhythm_b = stems_b.get("drums", np.zeros_like(b)) + stems_b.get("bass", np.zeros_like(b))
+        if align:
+            rhythm_b = align_to(rhythm_b, bpm_b, bpm_a, key_b, key_a)
+        rhythm_b = _fit_length(rhythm_b, a.shape[1])
+        rhythm_a = stems_a.get("drums", np.zeros_like(a)) + stems_a.get("bass", np.zeros_like(a))
+        out = melody_a + rhythm_b * float(b_volume) + rhythm_a * float(keep_a_bed)
+
     elif mode == "a_main":
         cb("align", 30, "正在将歌曲 B 对齐到歌曲 A 的节拍和调性")
         b_aligned = align_to(b, bpm_b, bpm_a, key_b, key_a) if align else b
@@ -344,6 +561,10 @@ def smart_fusion(
         cb("mix", 85, "正在均衡混合两首歌")
         b_aligned = _fit_length(b_aligned, a.shape[1])
         out = a + b_aligned * float(b_volume)
+
+    if match_space_enabled:
+        cb("space", 89, "正在匹配混响与空间感，让融合更像原生")
+        out = match_space(out, a)
 
     cb("master", 94, "正在统一响度并导出")
     return _master(out)
