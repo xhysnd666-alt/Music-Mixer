@@ -6,6 +6,7 @@ import sys
 import threading
 import traceback
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -42,6 +43,7 @@ def _new_task(fn) -> str:
         "progress": 0,
         "message": "任务已创建",
         "result": None,
+        "result_meta": None,
         "error": None,
     }
     with _lock:
@@ -53,9 +55,19 @@ def _new_task(fn) -> str:
                 _tasks[task_id].update(stage=stage, progress=round(pct, 1), message=msg)
 
         try:
-            result_path = fn(cb)
+            outcome = fn(cb)
+            if isinstance(outcome, tuple):
+                result_path, result_meta = outcome
+            else:
+                result_path, result_meta = outcome, None
             with _lock:
-                _tasks[task_id].update(status="done", progress=100, message="完成，可以下载了", result=result_path)
+                _tasks[task_id].update(
+                    status="done",
+                    progress=100,
+                    message="完成，可以下载了",
+                    result=result_path,
+                    result_meta=result_meta,
+                )
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             with _lock:
@@ -166,6 +178,75 @@ def fusion(req: FusionRequest):
     return {"task_id": _new_task(fn)}
 
 
+STEM_LABELS = {
+    "vocals": "人声",
+    "drums": "鼓",
+    "bass": "贝斯",
+    "guitar": "吉他",
+    "piano": "钢琴",
+    "other": "其他（含弦乐）",
+}
+STEM_ORDER = ["vocals", "drums", "bass", "guitar", "piano", "other"]
+
+
+class SeparateRequest(BaseModel):
+    track_id: str
+
+
+@app.post("/api/separate")
+def separate(req: SeparateRequest):
+    track = _track_or_404(req.track_id)
+
+    def fn(cb):
+        stems = audio_engine._separate(track["path"], device="cuda", progress_cb=cb)
+        cb("save", 78, "正在保存分离结果")
+        out_dir = RESULTS / f"sep_{uuid.uuid4().hex[:10]}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stem_items = []
+        for name in STEM_ORDER:
+            if name not in stems:
+                continue
+            audio = stems[name]
+            wav_path = out_dir / f"{name}.wav"
+            audio_engine.save_audio(str(wav_path), audio)
+            stem_items.append(
+                {
+                    "name": name,
+                    "label": STEM_LABELS.get(name, name),
+                    "file": wav_path.name,
+                    "peaks": audio_engine.compute_peaks(audio),
+                }
+            )
+        zip_path = RESULTS / f"{out_dir.name}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for item in stem_items:
+                zf.write(out_dir / item["file"], arcname=item["file"])
+        cb("done", 98, "分离完成")
+        return str(zip_path), {
+            "task_dir": out_dir.name,
+            "stems": stem_items,
+            "zip_url": f"/api/sep/{out_dir.name}/zip",
+        }
+
+    return {"task_id": _new_task(fn)}
+
+
+@app.get("/api/sep/{sep_id}/zip")
+def sep_zip(sep_id: str):
+    zip_path = RESULTS / f"{sep_id}.zip"
+    if not zip_path.exists():
+        raise HTTPException(404, "结果不存在")
+    return FileResponse(zip_path, filename=f"mixlab-separated-{sep_id}.zip")
+
+
+@app.get("/api/sep/{sep_id}/{stem}.wav")
+def sep_stem(sep_id: str, stem: str):
+    wav_path = RESULTS / sep_id / f"{stem}.wav"
+    if not wav_path.exists():
+        raise HTTPException(404, "音轨不存在")
+    return FileResponse(wav_path, filename=f"{stem}.wav")
+
+
 def _save_result(audio, output_format: str) -> str:
     task_id = uuid.uuid4().hex[:12]
     wav_path = RESULTS / f"result_{task_id}.wav"
@@ -190,6 +271,7 @@ def task_status(task_id: str):
             "progress": state["progress"],
             "message": state["message"],
             "result": state["result"],
+            "result_meta": state["result_meta"],
             "error": state["error"],
         }
     )
