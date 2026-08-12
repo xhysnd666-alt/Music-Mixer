@@ -12,6 +12,14 @@
   --radius: 10px;
 }
 
+@font-face {
+  font-family: "LXGW WenKai";
+  src: url("fonts/lxgw-wenkai-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -31,8 +39,17 @@ body {
   transition: opacity 0.5s ease;
 }
 
-.container { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 28px 32px 70px; }
-.footer { position: relative; z-index: 1; text-align: center; padding: 26px 0 40px; color: #6a6a6a; font-size: 12px; }
+#lyric-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 0.5s ease;
+}
+
+.container { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 28px 32px 70px; }
+.footer { position: relative; z-index: 2; text-align: center; padding: 26px 0 40px; color: #6a6a6a; font-size: 12px; }
 
 /* ---------- 顶部导航 ---------- */
 .topbar {
@@ -357,51 +374,58 @@ input[type="range"]:disabled { opacity: 0.35; }
 .stem-wave { width: 100%; height: 40px; border-radius: 4px; background: rgba(255,255,255,0.03); }
 .stem-audio { width: 100%; height: 34px; margin-top: 8px; }
 
-/* ---------- 歌词栏 ---------- */
-#lyric-bar {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%) translateY(10px);
-  z-index: 40;
-  max-width: min(720px, 90vw);
-  padding: 12px 28px 13px;
-  text-align: center;
-  pointer-events: none;
-  border-radius: 16px;
-  background: rgba(18, 18, 18, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* ---------- 背景歌词层 ---------- */
+.lyric-item {
+  position: absolute;
+  font-family: "LXGW WenKai", "华文行楷", "STXingkai", "楷体", KaiTi, cursive;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75), 0 0 26px rgba(29, 185, 84, 0.28);
   opacity: 0;
-  transition: opacity 0.45s ease, transform 0.45s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-}
-#lyric-bar.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-.lyric-text {
-  font-size: 14.5px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.94);
+  max-width: 24vw;
+  line-height: 1.6;
   white-space: pre-line;
-  letter-spacing: 0.3px;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.9s ease;
 }
-.lyric-song {
-  margin-top: 5px;
-  font-size: 11.5px;
-  color: var(--accent);
-  letter-spacing: 1px;
-  opacity: 0.85;
+.lyric-item.side-left {
+  text-align: right;
+  transform-origin: right center;
+}
+.lyric-item.side-right {
+  text-align: left;
+  transform-origin: left center;
+}
+.lyric-item.show {
+  opacity: 1;
+  animation: lyricFloat 3.4s ease-in-out infinite;
+}
+.lyric-item.hide {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  animation: none;
+}
+.lyric-item .l-text { display: block; letter-spacing: 1.5px; }
+.lyric-item .l-song {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.62em;
+  color: rgba(29, 185, 84, 0.92);
+  letter-spacing: 2px;
+}
+
+@keyframes lyricFloat {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -7px; }
 }
 
 /* 用户忙碌/操作时，氛围层让位 */
-body.busy #lyric-bar,
-body.busy #lyric-bg,
-body.scrolled-bottom #lyric-bar {
+body.busy #lyric-layer,
+body.busy #lyric-bg {
   opacity: 0.08;
+}
+
+/* 窄屏时隐藏背景歌词，避免遮挡内容 */
+@media (max-width: 1100px) {
+  #lyric-layer { display: none; }
 }
 
 @media (max-width: 860px) {

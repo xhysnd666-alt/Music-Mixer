@@ -542,80 +542,100 @@ function init() {
   updateRunBtns();
   checkHealth();
   initLyricBg();
-  startLyrics();
+  startAmbientLyrics();
 }
 
 /* ================= 背景氛围：歌词 + 音符 ================= */
 
 const LYRICS = [
-  { text: "秋天该很好，你若尚在场。", song: "春夏秋冬" },
-  { text: "尤其这新婚，就像玩牺牲。想过抢新娘，我差点讲真。", song: "不甘心" },
-  { text: "如能忘掉渴望，岁月长，衣裳薄。无论于什么角落，不假设你或会在旁，我也可畅游异国，放心吃喝。", song: "再见二丁目" },
-  { text: "从未跟你饮过冰，零度看风景。", song: "偿还" },
-  { text: "谁人曾照顾过我的感受，待我温柔吻过我伤口。能得到的安慰是失恋者得救后，很感激忠诚的狗。", song: "七友" },
-  { text: "阶砖不会拒绝磨蚀，窗花不可幽禁落霞，有感情就能一生一世吗？", song: "喜帖街" },
-  { text: "你是千堆雪，我是长街，怕日出一到，彼此瓦解。", song: "邮差" },
-  { text: "在有生的瞬间能遇到你，竟花光所有运气。", song: "明年今日" },
-  { text: "留我做个垃圾，长留恋于你家。从沉溺中结疤，再发芽。", song: "垃圾" },
-  { text: "意乱情迷极易流逝，难耐这夜春光浪费。", song: "春光乍泄" },
-  { text: "青春的快餐只要求快不理哪一家，哪有玩味的空档来欣赏细致淡雅。", song: "苦瓜" },
-  { text: "这个世界最坏罪名，叫太易动情，但我喜欢这罪名。", song: "无人之境" },
-  { text: "一起约好过年，缺席人物多于往年，只能齐集仍在的脸，赶快地拍下照片。在最坏时候，懂得吃，舍得穿，不会乱。", song: "小团圆" },
-  { text: "其实我再去爱惜你又有何用，难道这次我抱紧你未必落空。", song: "暗涌" },
-  { text: "难敌这纷扰世态，为理想或求生在捱。没完没了各有需要把青春贱卖，也爱用整晚畅论人家感情最后为何完结的道理。", song: "不吐不快" },
-  { text: "就算经过茫茫悠长岁月也会记住那张脸，明日将告别校园跟你道别时，我怕会暗暗鼻酸。", song: "单恋高校" },
-  { text: "何事落到这收场，枯死在你的手上。", song: "够钟" },
-  { text: "知你曾花心，爱着你很惊心。却又各开心，得我愿意受你所困。我为何肯等个旧人，还错过多少的亲吻。", song: "你知道我在等你们分手吗" },
-  { text: "我间中饮醉酒很喜欢自由，\n常犯错爱说谎但总会内疚，\n遇过很多的损友学到贪新厌旧，\n为何还喜欢我我这种无赖。\n是话你蠢还是很伟大，\n在座每位都将我踩口碑有多坏，\n但你亦永远不见怪。", song: "无赖" },
-  { text: "即使身边世事再毫无道理，与你永远亦连在一起，你不放下我，我不放下你，我想确定每日挽着同样的手臂。", song: "相依为命" },
-  { text: "不介意孤独，比爱你舒服，你是前度，何必听我吠。", song: "献世" },
-  { text: "遥远的她不可以再归家，我在梦里却始终只有她。", song: "遥远的她" },
-  { text: "互相祝福心软之际，或者准我吻下去。我甘于当副车，也是快乐着唏嘘，彼此这么了解，难怪注定似兄妹一对。", song: "钟无艳" },
-  { text: "游客是你，风景是我，无法避免，让你经过。", song: "稀客" },
-  { text: "剪影的你轮廓太好看，凝住眼泪才敢细看。", song: "约定" },
-  { text: "徘徊在似苦又甜之间，望不穿这暧昧的眼，爱或情借来填一晚，终须都归还，无谓多贪。", song: "暧昧" },
-  { text: "让我感谢你，赠我空欢喜，记得要忘记。", song: "花事了" },
-  { text: "我仿似跟你热恋过，和你未似现在这接近，思想开始过份。", song: "梦中人" },
-  { text: "明知爱这种男孩子，也许只能如此，但我会成为你最牵挂的一个女子。朝朝暮暮让你猜想如何驯服我，若果亲手抱住，或者不必如此。", song: "野孩子" },
-  { text: "我就算是拥抱过后回头没海岸，也换来见闻观光。我就算不再相信北极有曙光，行云流水亦爱看。", song: "如果东京不快乐" },
-  { text: "我不止三岁，我当然识趣。", song: "知情识趣" },
-  { text: "想与你开始从头开始，彼此的痛遥远但相似。", song: "有故事的人" },
-  { text: "这一生也在进取，这分钟却挂念谁。", song: "追" },
-  { text: "从眉梢中感觉到，从眼角看不到，彷佛已是最直接的裸露。", song: "有心人" },
-  { text: "能同途偶遇在这星球上，燃亮飘渺人生，我多么够运。无人如你逗留我思潮上，从没再疑问，这个世界好得很。", song: "春夏秋冬" },
-  { text: "为何我心分秒想着过去，为何你一点都不记起，情义已失去恩爱都失去，我却为何偏偏喜欢你。", song: "偏偏喜欢你" },
-  { text: "男女朋友无法迁就，越拖越久越想分手，谁对谁错谁太丑陋，嘈杂场面宁愿退后。", song: "Won't You Stand" },
-  { text: "我没有为你伤春悲秋不配有憾事，你没有共我踏过万里不够剧情延续故事。", song: "春秋" },
+  { text: "秋天该很好，你若尚在场", song: "春夏秋冬" },
+  { text: "想过抢新娘，我差点讲真", song: "不甘心" },
+  { text: "如能忘掉渴望，岁月长，衣裳薄", song: "再见二丁目" },
+  { text: "从未跟你饮过冰，零度看风景", song: "偿还" },
+  { text: "谁人曾照顾过我的感受", song: "七友" },
+  { text: "窗花不可幽禁落霞", song: "喜帖街" },
+  { text: "你是千堆雪，我是长街", song: "邮差" },
+  { text: "在有生的瞬间能遇到你", song: "明年今日" },
+  { text: "留我做个垃圾", song: "垃圾" },
+  { text: "意乱情迷极易流逝", song: "春光乍泄" },
+  { text: "哪有玩味的空档来欣赏细致淡雅", song: "苦瓜" },
+  { text: "这个世界最坏罪名，叫太易动情", song: "无人之境" },
+  { text: "在最坏时候，懂得吃，舍得穿，不会乱", song: "小团圆" },
+  { text: "难道这次我抱紧你未必落空", song: "暗涌" },
+  { text: "难敌这纷扰世态，为理想或求生在捱", song: "不吐不快" },
+  { text: "明日将告别校园跟你道别时", song: "单恋高校" },
+  { text: "何事落到这收场", song: "够钟" },
+  { text: "我为何肯等个旧人，还错过多少的亲吻", song: "你知道我在等你们分手吗" },
+  { text: "为何还喜欢我这种无赖", song: "无赖" },
+  { text: "你不放下我，我不放下你", song: "相依为命" },
+  { text: "不介意孤独，比爱你舒服", song: "献世" },
+  { text: "遥远的她不可以再归家", song: "遥远的她" },
+  { text: "我甘于当副车，也是快乐着唏嘘", song: "钟无艳" },
+  { text: "游客是你，风景是我", song: "稀客" },
+  { text: "剪影的你轮廓太好看", song: "约定" },
+  { text: "终须都归还，无谓多贪", song: "暧昧" },
+  { text: "记得要忘记", song: "花事了" },
+  { text: "我仿似跟你热恋过", song: "梦中人" },
+  { text: "但我会成为你最牵挂的一个女子", song: "野孩子" },
+  { text: "我就算不再相信北极有曙光", song: "如果东京不快乐" },
+  { text: "我不止三岁，我当然识趣", song: "知情识趣" },
+  { text: "想与你开始从头开始", song: "有故事的人" },
+  { text: "这一生也在进取，这分钟却挂念谁", song: "追" },
+  { text: "从眉梢中感觉到，从眼角看不到", song: "有心人" },
+  { text: "能同途偶遇在这星球上", song: "春夏秋冬" },
+  { text: "情义已失去恩爱都失去", song: "偏偏喜欢你" },
+  { text: "嘈杂场面宁愿退后", song: "Won't You Stand" },
+  { text: "我没有为你伤春悲秋不配有憾事", song: "春秋" },
 ];
 
-const LYRIC_SHOW_MS = 3000;
-let lyricIndex = 0;
-let lyricTimer = null;
+const LYRIC_DURATION = 4000;
+const LYRIC_GAP = 3000;
+let lyricSide = "right";
+let lyricHistory = [];
 
-function startLyrics() {
-  setTimeout(showLyric, 1200);
+function startAmbientLyrics() {
+  setTimeout(() => {
+    showSideLyric("left");
+    setInterval(() => {
+      if (document.body.classList.contains("busy")) return;
+      lyricSide = lyricSide === "left" ? "right" : "left";
+      showSideLyric(lyricSide);
+    }, LYRIC_GAP);
+  }, 800);
 }
 
-function showLyric() {
-  const item = LYRICS[lyricIndex % LYRICS.length];
-  lyricIndex += 1;
-  const bar = $("lyric-bar");
-  bar.classList.remove("show");
-  clearTimeout(lyricTimer);
+function pickLyric() {
+  let idx;
+  do {
+    idx = Math.floor(Math.random() * LYRICS.length);
+  } while (lyricHistory.includes(idx) && lyricHistory.length < LYRICS.length);
+  lyricHistory.push(idx);
+  if (lyricHistory.length > 8) lyricHistory.shift();
+  return LYRICS[idx];
+}
+
+function showSideLyric(side) {
+  const layer = $("lyric-layer");
+  if (!layer) return;
+  const item = pickLyric();
+  const el = document.createElement("div");
+  el.className = `lyric-item side-${side}`;
+  el.innerHTML = `<span class="l-text">${item.text}</span><span class="l-song">《${item.song}》</span>`;
+  el.style.top = `${12 + Math.random() * 55}%`;
+  if (side === "left") {
+    el.style.left = `${1 + Math.random() * 9}%`;
+    el.style.transform = `rotate(${-(3 + Math.random() * 5)}deg)`;
+  } else {
+    el.style.right = `${1 + Math.random() * 9}%`;
+    el.style.transform = `rotate(${3 + Math.random() * 5}deg)`;
+  }
+  el.style.fontSize = `${20 + Math.random() * 8}px`;
+  layer.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
   setTimeout(() => {
-    if (document.body.classList.contains("busy")) {
-      // 忙碌时先不打扰，等空闲后再继续
-      lyricTimer = setTimeout(showLyric, LYRIC_SHOW_MS);
-      return;
-    }
-    $("lyric-text").textContent = item.text;
-    $("lyric-song").textContent = `《${item.song}》`;
-    bar.classList.add("show");
-    lyricTimer = setTimeout(() => {
-      bar.classList.remove("show");
-      lyricTimer = setTimeout(showLyric, 400);
-    }, LYRIC_SHOW_MS);
-  }, 400);
+    el.classList.add("hide");
+    setTimeout(() => el.remove(), 850);
+  }, LYRIC_DURATION);
 }
 
 let busyCount = 0;
@@ -648,10 +668,10 @@ function initLyricBg() {
     return {
       x: Math.random() * W,
       y: initial ? Math.random() * H : H + 20 + Math.random() * 100,
-      size: 14 + Math.random() * 24,
+      size: 16 + Math.random() * 28,
       speed: 0.15 + Math.random() * 0.35,
       phase: Math.random() * Math.PI * 2,
-      alpha: 0.05 + Math.random() * 0.08,
+      alpha: 0.16 + Math.random() * 0.13,
       glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
     };
   }
@@ -667,7 +687,7 @@ function initLyricBg() {
       const fadeOut = Math.max(0, Math.min(1, (p.y - 24) / 100));
       ctx.globalAlpha = p.alpha * Math.min(fadeIn, fadeOut);
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
-      ctx.fillStyle = "#1db954";
+      ctx.fillStyle = "#2bd96a";
       ctx.fillText(p.glyph, x, p.y);
       if (p.y < -30) parts[i] = spawn(false);
     }
