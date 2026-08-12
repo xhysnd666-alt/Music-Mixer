@@ -695,44 +695,69 @@ function initLyricBg() {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const GLYPHS = ["♪", "♫", "♬", "♩"];
+  const SAFE_SEL = ".topbar, .track-card, .card, .mode-card, .actions, .progress-wrap, .result-card, .footer";
   let W = 0;
   let H = 0;
-  let sideW = 0;
+  let safeRects = [];
   const parts = [];
 
-  function resize() {
-    const dpr = window.devicePixelRatio || 1;
-    W = window.innerWidth;
-    H = window.innerHeight;
-    const contentW = Math.min(1080, W * 0.78);
-    sideW = Math.max(80, (W - contentW) / 2);
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    rebuild();
+  // 收集当前视口里会被音符挡住的区域（功能卡片、导航栏、按钮等），音符绝不进这些区域
+  function updateSafeRects() {
+    safeRects = [];
+    const pad = 26;
+    document.querySelectorAll(SAFE_SEL).forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      if (r.bottom < -pad || r.top > H + pad || r.right < -pad || r.left > W + pad) return;
+      safeRects.push({
+        x0: Math.max(0, r.left - pad),
+        x1: Math.min(W, r.right + pad),
+        y0: Math.max(0, r.top - pad),
+        y1: Math.min(H, r.bottom + pad),
+      });
+    });
+  }
+
+  function blocked(x, y, size) {
+    for (let i = 0; i < safeRects.length; i++) {
+      const r = safeRects[i];
+      if (x + size > r.x0 && x < r.x1 && y + size > r.y0 && y < r.y1) return true;
+    }
+    return false;
   }
 
   function spawn(initial, side) {
-    const maxSize = Math.min(42, Math.max(18, sideW / 4));
-    const size = 14 + Math.random() * Math.max(4, maxSize - 14);
-    const leftMin = 16;
-    const leftMax = sideW - 40 - size;
-    const xLeft = leftMax > leftMin ? leftMin + Math.random() * (leftMax - leftMin) : leftMin;
+    const size = 17 + Math.random() * 23; // 17-40px，比之前更大更清楚
+    const half = W / 2;
+    const margin = 14;
+    let x = margin;
+    let y = initial ? Math.random() * H : H + 20 + Math.random() * 120;
+    // 全屏随机找位置，最多试 80 次；找不到就退回最后一次随机结果（会被卡片自然遮住）
+    for (let tries = 0; tries < 80; tries++) {
+      if (side === "left") {
+        x = margin + Math.random() * Math.max(10, half - 30 - size - margin);
+      } else {
+        x = half + 30 + Math.random() * Math.max(10, W - margin - size - (half + 30));
+      }
+      if (initial) y = Math.random() * H;
+      if (!blocked(x, y, size)) break;
+    }
     return {
       side,
-      x: side === "left" ? xLeft : W - xLeft - size,
-      y: initial ? Math.random() * H : H + 20 + Math.random() * 100,
+      x,
+      y,
       size,
-      speed: 0.15 + Math.random() * 0.35,
+      speed: 0.22 + Math.random() * 0.38,
       phase: Math.random() * Math.PI * 2,
-      alpha: 0.16 + Math.random() * 0.13,
+      rot: (Math.random() - 0.5) * 0.45,
+      alpha: 0.38 + Math.random() * 0.24,
       glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
     };
   }
 
   function rebuild() {
     parts.length = 0;
-    const perSide = sideW < 110 ? 5 : sideW < 200 ? 7 : 9;
+    const perSide = W < 900 ? 10 : W < 1400 ? 14 : 18;
     for (let i = 0; i < perSide; i++) parts.push(spawn(true, "left"));
     for (let i = 0; i < perSide; i++) parts.push(spawn(true, "right"));
   }
@@ -743,21 +768,43 @@ function initLyricBg() {
       const p = parts[i];
       p.y -= p.speed;
       p.phase += 0.012;
-      const x = p.x + Math.sin(p.phase) * 14;
-      const fadeIn = Math.max(0, Math.min(1, (H - p.y) / 140));
-      const fadeOut = Math.max(0, Math.min(1, (p.y - 24) / 100));
+      const x = p.x + Math.sin(p.phase) * 16;
+      // 飘到卡片后面或被卡片挡住时，直接换一个干净位置重生，保持左右数量恒定
+      if (p.y < -40 || blocked(x, p.y, p.size)) {
+        parts[i] = spawn(false, p.side);
+        continue;
+      }
+      const fadeIn = Math.max(0, Math.min(1, (H - p.y) / 160));
+      const fadeOut = Math.max(0, Math.min(1, (p.y - 30) / 120));
       ctx.globalAlpha = p.alpha * Math.min(fadeIn, fadeOut);
+      ctx.save();
+      ctx.translate(x + p.size / 2, p.y);
+      ctx.rotate(p.rot);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
       ctx.fillStyle = "#2bd96a";
-      ctx.fillText(p.glyph, x, p.y);
-      if (p.y < -30) parts[i] = spawn(false, p.side);
+      ctx.fillText(p.glyph, 0, 0);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     requestAnimationFrame(tick);
   }
 
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateSafeRects();
+    rebuild();
+  }
+
   resize();
   window.addEventListener("resize", resize);
+  window.addEventListener("scroll", () => requestAnimationFrame(updateSafeRects), { passive: true });
   tick();
 }
 
