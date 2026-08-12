@@ -73,7 +73,9 @@ AI 先把两首歌拆开，再按你的想法重新组装。B 音量、A 的骨�
 ## 🚀 快速开始 / Quick Start
 
 ```bash
-# 1. 双击启动工具.bat（Windows）
+# 1. 双击 MixLab.exe（Windows，推荐，真正的程序）
+#    或双击 启动工具.bat / 桌面快捷方式
+#    停止服务：双击 停止MixLab.bat
 #    或者命令行启动：
 cd music-mixer
 .venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
