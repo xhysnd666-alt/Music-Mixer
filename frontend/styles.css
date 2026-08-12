@@ -22,6 +22,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------- 背景音乐氛围层 ---------- */
+#lyric-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.container { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 28px 32px 70px; }
+.footer { position: relative; z-index: 1; text-align: center; padding: 26px 0 40px; color: #6a6a6a; font-size: 12px; }
+
 /* ---------- 顶部导航 ---------- */
 .topbar {
   position: sticky;
@@ -77,7 +89,6 @@ body {
 .status-chip.err .status-dot { background: var(--danger); }
 
 /* ---------- 布局 ---------- */
-.container { max-width: 1080px; margin: 0 auto; padding: 28px 32px 70px; }
 .page-head { margin-bottom: 22px; }
 .page-head h1 { font-size: 26px; font-weight: 800; }
 .page-head p { color: var(--muted); font-size: 14px; margin-top: 6px; }
@@ -346,7 +357,52 @@ input[type="range"]:disabled { opacity: 0.35; }
 .stem-wave { width: 100%; height: 40px; border-radius: 4px; background: rgba(255,255,255,0.03); }
 .stem-audio { width: 100%; height: 34px; margin-top: 8px; }
 
-.footer { text-align: center; padding: 26px 0 40px; color: #6a6a6a; font-size: 12px; }
+/* ---------- 歌词栏 ---------- */
+#lyric-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(10px);
+  z-index: 40;
+  max-width: min(720px, 90vw);
+  padding: 12px 28px 13px;
+  text-align: center;
+  pointer-events: none;
+  border-radius: 16px;
+  background: rgba(18, 18, 18, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+#lyric-bar.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.lyric-text {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.94);
+  white-space: pre-line;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+.lyric-song {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--accent);
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+
+/* 用户忙碌/操作时，氛围层让位 */
+body.busy #lyric-bar,
+body.busy #lyric-bg,
+body.scrolled-bottom #lyric-bar {
+  opacity: 0.08;
+}
 
 @media (max-width: 860px) {
   .topbar { flex-wrap: wrap; padding: 12px 16px; }
