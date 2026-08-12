@@ -709,19 +709,20 @@ function initLyricBg() {
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  function zoneX(side) {
-    if (side === "left") return 24 + Math.random() * Math.max(0, sideW - 56);
-    return W - sideW + 24 + Math.random() * Math.max(0, sideW - 56);
+    rebuild();
   }
 
   function spawn(initial, side) {
+    const maxSize = Math.min(42, Math.max(18, sideW / 4));
+    const size = 14 + Math.random() * Math.max(4, maxSize - 14);
+    const leftMin = 16;
+    const leftMax = sideW - 40 - size;
+    const xLeft = leftMax > leftMin ? leftMin + Math.random() * (leftMax - leftMin) : leftMin;
     return {
       side,
-      x: zoneX(side),
+      x: side === "left" ? xLeft : W - xLeft - size,
       y: initial ? Math.random() * H : H + 20 + Math.random() * 100,
-      size: 16 + Math.random() * 28,
+      size,
       speed: 0.15 + Math.random() * 0.35,
       phase: Math.random() * Math.PI * 2,
       alpha: 0.16 + Math.random() * 0.13,
@@ -737,6 +738,15 @@ function initLyricBg() {
     const left = spawn(false, "left");
     parts[2 * k] = left;
     parts[2 * k + 1] = mirrorOf(left);
+  }
+
+  function rebuild() {
+    parts.length = 0;
+    const pairs = sideW < 180 ? 4 : sideW < 280 ? 6 : 8;
+    for (let i = 0; i < pairs; i++) {
+      parts.push(spawn(true, "left"));
+      parts.push(mirrorOf(parts[parts.length - 1]));
+    }
   }
 
   function tick() {
@@ -760,10 +770,6 @@ function initLyricBg() {
 
   resize();
   window.addEventListener("resize", resize);
-  for (let i = 0; i < 8; i++) {
-    parts.push(spawn(true, "left"));
-    parts.push(mirrorOf(parts[parts.length - 1]));
-  }
   tick();
 }
 
