@@ -725,15 +725,20 @@ function showSideLyric(side) {
   lyricLastTop = top;
   el.style.top = `${top}%`;
   const margin = 20;
-  // 强制单行：按句子长度自适应字号，保证一行放得下
-  const availW = sideW - margin * 2;
-  const fs = Math.max(17, Math.min(26, Math.floor((availW / Math.max(1, item.text.length)) * 1.08)));
+  // 强制单行：按句子长度自适应字号，保证不超出侧区，也绝不超出视口边框
+  const len = Math.max(1, item.text.length);
+  const spacing = 1.5 * (len - 1);
+  const fsIdeal = Math.floor((sideW - margin * 2 - spacing) / len);
+  const fsMax = Math.floor((W - margin * 2 - 30 - spacing) / len);
+  const fs = Math.max(14, Math.min(26, fsIdeal, fsMax));
   el.style.fontSize = `${fs}px`;
   if (side === "left") {
     el.style.left = `${margin}px`;
     el.style.transform = `rotate(${-(3 + Math.random() * 4)}deg)`;
   } else {
-    el.style.left = `${W - sideW + margin}px`;
+    // 右侧歌词用 right 定位，让文字向左生长，避免冲出屏幕右边缘
+    el.style.right = `${margin}px`;
+    el.style.left = "auto";
     el.style.transform = `rotate(${3 + Math.random() * 4}deg)`;
   }
   layer.appendChild(el);

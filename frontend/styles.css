@@ -405,7 +405,7 @@ input[type="range"]:disabled { opacity: 0.35; }
 }
 .lyric-item.side-right {
   text-align: left;
-  transform-origin: left center;
+  transform-origin: right center;
 }
 .lyric-item.show {
   opacity: 1;
