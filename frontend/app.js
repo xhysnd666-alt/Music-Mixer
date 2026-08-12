@@ -592,6 +592,7 @@ const LYRIC_DURATION = 4000;
 const LYRIC_GAP = 3000;
 let lyricSide = "right";
 let lyricHistory = [];
+let lyricLastTop = 40;
 
 function startAmbientLyrics() {
   setTimeout(() => {
@@ -618,18 +619,33 @@ function showSideLyric(side) {
   const layer = $("lyric-layer");
   if (!layer) return;
   const item = pickLyric();
+  const W = window.innerWidth;
+  const contentW = Math.min(1080, W * 0.92);
+  const sideW = Math.max(80, (W - contentW) / 2);
   const el = document.createElement("div");
   el.className = `lyric-item side-${side}`;
-  el.innerHTML = `<span class="l-text">${item.text}</span><span class="l-song">《${item.song}》</span>`;
-  el.style.top = `${12 + Math.random() * 55}%`;
+  // 逐字显现（手写感）
+  const chars = Array.from(item.text)
+    .map((c, i) => `<span class="char" style="animation-delay:${i * 45}ms">${c}</span>`)
+    .join("");
+  el.innerHTML = `<span class="l-text">${chars}</span><span class="l-song">《${item.song}》</span>`;
+  // 垂直位置与另一侧错开，避免两条歌词重叠
+  let top = lyricLastTop + (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 18);
+  top = Math.min(68, Math.max(10, top));
+  lyricLastTop = top;
+  el.style.top = `${top}%`;
+  const margin = 20;
   if (side === "left") {
-    el.style.left = `${1 + Math.random() * 9}%`;
-    el.style.transform = `rotate(${-(3 + Math.random() * 5)}deg)`;
+    const left = margin + Math.random() * Math.max(0, sideW - 150);
+    el.style.left = `${left}px`;
+    el.style.maxWidth = `${Math.max(90, sideW - left - margin)}px`;
+    el.style.transform = `rotate(${-(3 + Math.random() * 4)}deg)`;
   } else {
-    el.style.right = `${1 + Math.random() * 9}%`;
-    el.style.transform = `rotate(${3 + Math.random() * 5}deg)`;
+    const left = W - sideW + margin + Math.random() * Math.max(0, sideW - 150);
+    el.style.left = `${left}px`;
+    el.style.maxWidth = `${Math.max(90, W - left - margin)}px`;
+    el.style.transform = `rotate(${3 + Math.random() * 4}deg)`;
   }
-  el.style.fontSize = `${20 + Math.random() * 8}px`;
   layer.appendChild(el);
   requestAnimationFrame(() => el.classList.add("show"));
   setTimeout(() => {
@@ -653,20 +669,30 @@ function initLyricBg() {
   const GLYPHS = ["♪", "♫", "♬", "♩"];
   let W = 0;
   let H = 0;
+  let sideW = 0;
   const parts = [];
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
     W = window.innerWidth;
     H = window.innerHeight;
+    const contentW = Math.min(1080, W * 0.92);
+    sideW = Math.max(80, (W - contentW) / 2);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function spawn(initial) {
+  function zoneX(side) {
+    if (side === "left") return 24 + Math.random() * Math.max(0, sideW - 56);
+    return W - sideW + 24 + Math.random() * Math.max(0, sideW - 56);
+  }
+
+  function spawn(initial, forcedSide) {
+    const side = forcedSide || (Math.random() < 0.5 ? "left" : "right");
     return {
-      x: Math.random() * W,
+      side,
+      x: zoneX(side),
       y: initial ? Math.random() * H : H + 20 + Math.random() * 100,
       size: 16 + Math.random() * 28,
       speed: 0.15 + Math.random() * 0.35,
@@ -689,7 +715,7 @@ function initLyricBg() {
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
       ctx.fillStyle = "#2bd96a";
       ctx.fillText(p.glyph, x, p.y);
-      if (p.y < -30) parts[i] = spawn(false);
+      if (p.y < -30) parts[i] = spawn(false, p.side);
     }
     ctx.globalAlpha = 1;
     requestAnimationFrame(tick);
@@ -697,7 +723,8 @@ function initLyricBg() {
 
   resize();
   window.addEventListener("resize", resize);
-  for (let i = 0; i < 11; i++) parts.push(spawn(true));
+  for (let i = 0; i < 8; i++) parts.push(spawn(true, "left"));
+  for (let i = 0; i < 8; i++) parts.push(spawn(true, "right"));
   tick();
 }
 
