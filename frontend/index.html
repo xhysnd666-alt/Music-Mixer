@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MixLab · 音乐融合工坊</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">MixLab</div>
+        <div class="brand-sub">音乐融合工坊</div>
+      </div>
+    </div>
+    <div class="status-chip" id="gpu-status">
+      <span class="status-dot"></span> 正在检测本机环境
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 上传区 -->
+    <section class="upload-grid">
+      <div class="track-card" id="track-a">
+        <div class="track-head">
+          <span class="track-badge badge-a">A</span>
+          <span class="track-title" id="title-a">上传歌曲 A</span>
+          <button class="icon-btn" id="remove-a" hidden aria-label="移除">×</button>
+        </div>
+        <div class="dropzone" id="drop-a">
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4M6 10l6-6 6 6" /><path d="M4 20h16" />
+            </svg>
+          </div>
+          <div class="dz-text">拖拽音乐文件到这里<br /><span>或点击选择 · MP3 / WAV / M4A / FLAC</span></div>
+        </div>
+        <canvas class="waveform" id="wave-a" height="72" hidden></canvas>
+        <div class="track-meta" id="meta-a" hidden></div>
+        <input type="file" id="file-a" accept="audio/*" hidden />
+      </div>
+
+      <div class="plus-divider">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+      </div>
+
+      <div class="track-card" id="track-b">
+        <div class="track-head">
+          <span class="track-badge badge-b">B</span>
+          <span class="track-title" id="title-b">上传歌曲 B</span>
+          <button class="icon-btn" id="remove-b" hidden aria-label="移除">×</button>
+        </div>
+        <div class="dropzone" id="drop-b">
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4M6 10l6-6 6 6" /><path d="M4 20h16" />
+            </svg>
+          </div>
+          <div class="dz-text">拖拽音乐文件到这里<br /><span>或点击选择 · MP3 / WAV / M4A / FLAC</span></div>
+        </div>
+        <canvas class="waveform" id="wave-b" height="72" hidden></canvas>
+        <div class="track-meta" id="meta-b" hidden></div>
+        <input type="file" id="file-b" accept="audio/*" hidden />
+      </div>
+    </section>
+
+    <!-- 模式选择 -->
+    <section class="mode-section">
+      <div class="mode-card" data-mode="join" id="mode-join">
+        <div class="mode-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h8M4 12h16M4 17h6" />
+          </svg>
+        </div>
+        <div class="mode-name">无缝拼接</div>
+        <div class="mode-desc">A 接 B · 节拍调性对齐 · 听不出接缝</div>
+      </div>
+      <div class="mode-card" data-mode="fusion" id="mode-fusion">
+        <div class="mode-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="4" /><circle cx="15" cy="15" r="4" /><path d="M13 11l4 4M11 13l-4 4" />
+          </svg>
+        </div>
+        <div class="mode-name">智能融合</div>
+        <div class="mode-desc">两首歌合成一首 · 自由分配音色要素</div>
+      </div>
+    </section>
+
+    <!-- 高级参数 -->
+    <section class="panel" id="params-panel">
+      <div class="panel-head">
+        <span>高级参数</span>
+        <button class="ghost-btn" id="reset-params">恢复默认</button>
+      </div>
+
+      <div class="params" id="params-join" hidden>
+        <label class="check-row">
+          <input type="checkbox" id="auto-cut" checked />
+          <span>自动选择最佳拼接点</span>
+        </label>
+        <div class="param-row">
+          <label class="param-label">A 的接入点（B 从这里接上）</label>
+          <div class="range-wrap">
+            <input type="range" id="cut-a" min="5" max="95" value="75" disabled />
+            <output id="cut-a-val">75%</output>
+          </div>
+        </div>
+        <div class="param-row">
+          <label class="param-label">B 的起点</label>
+          <div class="range-wrap">
+            <input type="range" id="cut-b" min="0" max="90" value="0" disabled />
+            <output id="cut-b-val">0%</output>
+          </div>
+        </div>
+        <div class="param-row">
+          <label class="param-label">交叉淡化时长</label>
+          <div class="range-wrap">
+            <input type="range" id="crossfade" min="1" max="15" value="4" />
+            <output id="crossfade-val">4 秒</output>
+          </div>
+        </div>
+        <div class="switch-row">
+          <span>节拍对齐（轻微变速，保持音高）</span>
+          <label class="switch"><input type="checkbox" id="align-bpm" checked /><span></span></label>
+        </div>
+        <div class="switch-row">
+          <span>调性对齐（轻微移调）</span>
+          <label class="switch"><input type="checkbox" id="align-pitch" checked /><span></span></label>
+        </div>
+      </div>
+
+      <div class="params" id="params-fusion" hidden>
+        <div class="seg" id="fusion-mode-seg">
+          <button class="seg-btn active" data-mode="vocal_swap">A 人声 + B 伴奏</button>
+          <button class="seg-btn" data-mode="a_main">A 为主 · B 为辅</button>
+          <button class="seg-btn" data-mode="balanced">均衡混合</button>
+        </div>
+        <div class="param-row">
+          <label class="param-label">B 的音量</label>
+          <div class="range-wrap">
+            <input type="range" id="b-volume" min="0" max="2" step="0.05" value="1" />
+            <output id="b-volume-val">100%</output>
+          </div>
+        </div>
+        <div class="param-row" id="keep-bed-row">
+          <label class="param-label">保留 A 的伴奏骨架（让融合更有 A 的味道）</label>
+          <div class="range-wrap">
+            <input type="range" id="keep-bed" min="0" max="1" step="0.05" value="0.25" />
+            <output id="keep-bed-val">25%</output>
+          </div>
+        </div>
+        <div class="switch-row" id="drums-row" hidden>
+          <span>B 只取鼓点融入（适合节奏点缀）</span>
+          <label class="switch"><input type="checkbox" id="use-b-drums" /><span></span></label>
+        </div>
+        <div class="switch-row">
+          <span>节拍 / 调性自动对齐</span>
+          <label class="switch"><input type="checkbox" id="fusion-align" checked /><span></span></label>
+        </div>
+        <p class="hint">提示：“A 人声 + B 伴奏”模式需要 AI 分离两首歌，耗时约 2-6 分钟。</p>
+      </div>
+
+      <div class="output-row">
+        <span>导出格式</span>
+        <div class="seg small" id="format-seg">
+          <button class="seg-btn active" data-format="mp3">MP3</button>
+          <button class="seg-btn" data-format="wav">WAV</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 操作 -->
+    <section class="actions">
+      <button class="btn-ghost-big" id="auto-run">✨ 一键自动</button>
+      <button class="btn-primary" id="run-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+        开始处理
+      </button>
+    </section>
+
+    <!-- 进度 -->
+    <section class="progress-wrap" id="progress-wrap" hidden>
+      <div class="progress-head">
+        <span id="progress-message">准备中…</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+    </section>
+
+    <!-- 结果 -->
+    <section class="result-card" id="result-card" hidden>
+      <div class="result-title">处理完成 🎉</div>
+      <audio controls id="result-audio" src=""></audio>
+      <div class="result-actions">
+        <button class="btn-primary small" id="download-btn">下载成品</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">MixLab · 本地 AI 音乐工作台 · 所有处理都在你的电脑上完成</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/uploads/*
+data/results/*
+data/server.log
+data/server.err
+!data/uploads/.gitkeep
+!data/results/.gitkeep
