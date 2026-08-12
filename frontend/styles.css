@@ -382,9 +382,8 @@ input[type="range"]:disabled { opacity: 0.35; }
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75), 0 0 26px rgba(29, 185, 84, 0.28);
   opacity: 0;
-  max-width: 24vw;
   line-height: 1.6;
-  white-space: pre-line;
+  white-space: nowrap;
   transition: opacity 0.9s ease;
 }
 .lyric-item.side-left {

@@ -586,6 +586,34 @@ const LYRICS = [
   { text: "情义已失去恩爱都失去", song: "偏偏喜欢你" },
   { text: "嘈杂场面宁愿退后", song: "Won't You Stand" },
   { text: "我没有为你伤春悲秋不配有憾事", song: "春秋" },
+  { text: "你的衣裳今天我在穿", song: "暧昧" },
+  { text: "难离难舍想抱紧些", song: "单车" },
+  { text: "我想哭你可不可以暂时别要睡", song: "假如让我说下去" },
+  { text: "天生我高贵艳丽到底", song: "芳华绝代" },
+  { text: "其实你是一幅画", song: "念念不忘" },
+  { text: "从前共你促膝把酒倾通宵都不够", song: "最佳损友" },
+  { text: "仍未忘相约看漫天黄叶远飞", song: "约定" },
+  { text: "自己都不爱，怎么相爱", song: "给自己的情书" },
+  { text: "多少年，共对亦无言", song: "冷战" },
+  { text: "得到过又猝逝也有一种智慧", song: "年度之歌" },
+  { text: "若你喜欢怪人，其实我很美", song: "打回原形" },
+  { text: "余生请你，指教", song: "咬唇" },
+  { text: "真想带你见见，我刚识到的她", song: "耿耿于怀" },
+  { text: "能承认嘛我故意当那电灯胆", song: "电灯胆" },
+  { text: "做只猫做只狗，不做情人", song: "爱与诚" },
+  { text: "我想知，如何永远不分开", song: "出埃及记" },
+  { text: "抱着你不枉献世", song: "飞女正传" },
+  { text: "沉没湖底，欣赏月圆", song: "漩涡" },
+  { text: "如果你太累，及时的道别没有罪", song: "玻璃之情" },
+  { text: "如沿途人群闹哄了，亦会听到心跳", song: "真命天子" },
+  { text: "任他们多漂亮，未及你矜贵", song: "终身美丽" },
+  { text: "宁愿没拥抱，共你可到老", song: "祝君好" },
+  { text: "但凡未得到，但凡是过去", song: "似是故人来" },
+  { text: "共你相识三千天，我没名无姓", song: "好好恋爱" },
+  { text: "谁曾送我一朵，告别我", song: "告别我" },
+  { text: "最动人时光，未必地老天荒", song: "罗生门" },
+  { text: "共你亲到无可亲密后", song: "恋无可恋" },
+  { text: "能容纳没处去的怪人", song: "守下去" },
 ];
 
 const LYRIC_DURATION = 4000;
@@ -635,15 +663,15 @@ function showSideLyric(side) {
   lyricLastTop = top;
   el.style.top = `${top}%`;
   const margin = 20;
+  // 强制单行：按句子长度自适应字号，保证一行放得下
+  const availW = sideW - margin * 2;
+  const fs = Math.max(17, Math.min(26, Math.floor((availW / Math.max(1, item.text.length)) * 1.08)));
+  el.style.fontSize = `${fs}px`;
   if (side === "left") {
-    const left = margin + Math.random() * Math.max(0, sideW - 150);
-    el.style.left = `${left}px`;
-    el.style.maxWidth = `${Math.max(90, sideW - left - margin)}px`;
+    el.style.left = `${margin}px`;
     el.style.transform = `rotate(${-(3 + Math.random() * 4)}deg)`;
   } else {
-    const left = W - sideW + margin + Math.random() * Math.max(0, sideW - 150);
-    el.style.left = `${left}px`;
-    el.style.maxWidth = `${Math.max(90, W - left - margin)}px`;
+    el.style.left = `${W - sideW + margin}px`;
     el.style.transform = `rotate(${3 + Math.random() * 4}deg)`;
   }
   layer.appendChild(el);
@@ -688,8 +716,7 @@ function initLyricBg() {
     return W - sideW + 24 + Math.random() * Math.max(0, sideW - 56);
   }
 
-  function spawn(initial, forcedSide) {
-    const side = forcedSide || (Math.random() < 0.5 ? "left" : "right");
+  function spawn(initial, side) {
     return {
       side,
       x: zoneX(side),
@@ -700,6 +727,16 @@ function initLyricBg() {
       alpha: 0.16 + Math.random() * 0.13,
       glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
     };
+  }
+
+  function mirrorOf(p) {
+    return { ...p, side: "right", x: W - p.x - p.size };
+  }
+
+  function respawnPair(k) {
+    const left = spawn(false, "left");
+    parts[2 * k] = left;
+    parts[2 * k + 1] = mirrorOf(left);
   }
 
   function tick() {
@@ -715,7 +752,7 @@ function initLyricBg() {
       ctx.font = `${p.size}px "Segoe UI Symbol", "Microsoft YaHei", serif`;
       ctx.fillStyle = "#2bd96a";
       ctx.fillText(p.glyph, x, p.y);
-      if (p.y < -30) parts[i] = spawn(false, p.side);
+      if (p.y < -30) respawnPair(Math.floor(i / 2));
     }
     ctx.globalAlpha = 1;
     requestAnimationFrame(tick);
@@ -723,8 +760,10 @@ function initLyricBg() {
 
   resize();
   window.addEventListener("resize", resize);
-  for (let i = 0; i < 8; i++) parts.push(spawn(true, "left"));
-  for (let i = 0; i < 8; i++) parts.push(spawn(true, "right"));
+  for (let i = 0; i < 8; i++) {
+    parts.push(spawn(true, "left"));
+    parts.push(mirrorOf(parts[parts.length - 1]));
+  }
   tick();
 }
 
