@@ -682,7 +682,7 @@ const LYRIC_DURATION = 4000;
 const LYRIC_GAP = 3000;
 let lyricSide = "right";
 let lyricHistory = [];
-let lyricLastTop = 40;
+let lyricLastTop = { left: 40, right: 40 };
 
 function startAmbientLyrics() {
   setTimeout(() => {
@@ -719,10 +719,15 @@ function showSideLyric(side) {
     .map((c, i) => `<span class="char" style="animation-delay:${i * 60}ms">${c}</span>`)
     .join("");
   el.innerHTML = `<span class="l-text">${chars}</span><span class="l-song">《${item.song}》</span>`;
-  // 垂直位置与另一侧错开，避免两条歌词重叠
-  let top = lyricLastTop + (Math.random() < 0.5 ? -1 : 1) * (16 + Math.random() * 18);
-  top = Math.min(60, Math.max(16, top));
-  lyricLastTop = top;
+  // 垂直位置与另一侧至少保持 18% 的间距，两条歌词绝不会重叠
+  const other = side === "left" ? "right" : "left";
+  let top = 16 + Math.random() * 44;
+  if (Math.abs(top - lyricLastTop[other]) < 18) {
+    top = lyricLastTop[other] + (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 12);
+    top = Math.max(16, Math.min(60, top));
+    if (Math.abs(top - lyricLastTop[other]) < 18) top = lyricLastTop[other] >= 38 ? 16 : 60;
+  }
+  lyricLastTop[side] = top;
   el.style.top = `${top}%`;
   const margin = 20;
   // 强制单行：按句子长度自适应字号，保证不超出侧区，也绝不超出视口边框
@@ -734,12 +739,12 @@ function showSideLyric(side) {
   el.style.fontSize = `${fs}px`;
   if (side === "left") {
     el.style.left = `${margin}px`;
-    el.style.transform = `rotate(${-(3 + Math.random() * 4)}deg)`;
+    el.style.setProperty("--tilt", `${-(3 + Math.random() * 4)}deg`);
   } else {
     // 右侧歌词用 right 定位，让文字向左生长，避免冲出屏幕右边缘
     el.style.right = `${margin}px`;
     el.style.left = "auto";
-    el.style.transform = `rotate(${3 + Math.random() * 4}deg)`;
+    el.style.setProperty("--tilt", `${3 + Math.random() * 4}deg`);
   }
   layer.appendChild(el);
   requestAnimationFrame(() => el.classList.add("show"));
