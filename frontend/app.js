@@ -648,7 +648,7 @@ function showSideLyric(side) {
   if (!layer) return;
   const item = pickLyric();
   const W = window.innerWidth;
-  const contentW = Math.min(1080, W * 0.92);
+  const contentW = Math.min(1080, W * 0.78);
   const sideW = Math.max(80, (W - contentW) / 2);
   const el = document.createElement("div");
   el.className = `lyric-item side-${side}`;
@@ -704,7 +704,7 @@ function initLyricBg() {
     const dpr = window.devicePixelRatio || 1;
     W = window.innerWidth;
     H = window.innerHeight;
-    const contentW = Math.min(1080, W * 0.92);
+    const contentW = Math.min(1080, W * 0.78);
     sideW = Math.max(80, (W - contentW) / 2);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
@@ -732,7 +732,7 @@ function initLyricBg() {
 
   function rebuild() {
     parts.length = 0;
-    const perSide = sideW < 180 ? 4 : sideW < 280 ? 6 : 8;
+    const perSide = sideW < 110 ? 5 : sideW < 200 ? 7 : 9;
     for (let i = 0; i < perSide; i++) parts.push(spawn(true, "left"));
     for (let i = 0; i < perSide; i++) parts.push(spawn(true, "right"));
   }
