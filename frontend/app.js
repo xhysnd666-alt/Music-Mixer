@@ -714,9 +714,9 @@ function showSideLyric(side) {
   const sideW = Math.max(80, (W - contentW) / 2);
   const el = document.createElement("div");
   el.className = `lyric-item side-${side}`;
-  // 逐字显现（手写感）
+  // 逐字墨迹晕染（手写感）
   const chars = Array.from(item.text)
-    .map((c, i) => `<span class="char" style="animation-delay:${i * 45}ms">${c}</span>`)
+    .map((c, i) => `<span class="char" style="animation-delay:${i * 60}ms">${c}</span>`)
     .join("");
   el.innerHTML = `<span class="l-text">${chars}</span><span class="l-song">《${item.song}》</span>`;
   // 垂直位置与另一侧错开，避免两条歌词重叠

@@ -397,7 +397,7 @@ input[type="range"]:disabled { opacity: 0.35; }
   opacity: 0;
   line-height: 1.6;
   white-space: nowrap;
-  transition: opacity 0.9s ease;
+  transition: opacity 0.9s ease, filter 0.9s ease, margin-top 0.9s ease;
 }
 .lyric-item.side-left {
   text-align: right;
@@ -413,14 +413,22 @@ input[type="range"]:disabled { opacity: 0.35; }
 }
 .lyric-item.hide {
   opacity: 0;
-  transition: opacity 0.8s ease;
+  filter: blur(4px);
+  margin-top: -14px;
+  transition: opacity 0.8s ease, filter 0.8s ease, margin-top 0.8s ease;
   animation: none;
 }
-.lyric-item .l-text { display: block; letter-spacing: 1.5px; }
+.lyric-item .l-text {
+  display: block;
+  letter-spacing: 1.5px;
+  animation: candleBreath 3.2s ease-in-out 0.6s infinite;
+}
 .lyric-item .char {
   display: inline-block;
   opacity: 0;
-  animation: charIn 0.55s ease forwards;
+  filter: blur(6px);
+  transform: scale(1.08);
+  animation: inkIn 0.7s ease forwards;
 }
 .lyric-item .l-song {
   display: block;
@@ -429,7 +437,10 @@ input[type="range"]:disabled { opacity: 0.35; }
   color: rgba(29, 185, 84, 0.92);
   letter-spacing: 2px;
   opacity: 0;
-  animation: songIn 0.6s ease 0.4s forwards;
+  transform: scale(1.3);
+  filter: blur(3px);
+  transform-origin: center;
+  animation: stampIn 0.75s cubic-bezier(0.2, 0.8, 0.3, 1.15) 0.5s forwards;
 }
 
 @keyframes lyricFloat {
@@ -437,14 +448,28 @@ input[type="range"]:disabled { opacity: 0.35; }
   50% { margin-top: -7px; }
 }
 
-@keyframes charIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes inkIn {
+  0% { opacity: 0; filter: blur(6px); transform: scale(1.08) translateY(3px); }
+  60% { opacity: 0.92; filter: blur(2px); transform: scale(1.02) translateY(1px); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1) translateY(0); }
 }
 
-@keyframes songIn {
-  from { opacity: 0; }
-  to { opacity: 0.85; }
+@keyframes candleBreath {
+  0%, 100% {
+    opacity: 0.92;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75), 0 0 14px rgba(29, 185, 84, 0.20);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75), 0 0 30px rgba(29, 185, 84, 0.45);
+  }
+}
+
+@keyframes stampIn {
+  0% { opacity: 0; transform: scale(1.3); filter: blur(3px); }
+  55% { opacity: 1; transform: scale(0.96); filter: blur(0); }
+  75% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
 /* 用户忙碌/操作时，氛围层让位 */
